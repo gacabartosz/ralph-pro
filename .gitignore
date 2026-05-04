@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# uv / venv
+.venv/
+venv/
+.python-version
+uv.lock
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Tests
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# OS
+.DS_Store
+
+# Ralph runtime artifacts
+.ralph-runs/
+.ralph-worktrees/
+*.log
+
+# Secrets
+.env
+.env.local
+
+# Claude
+.claude/
