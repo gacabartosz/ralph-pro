@@ -51,7 +51,35 @@ uv run ralph audit-mcp \
 |---------|--------------|
 | `ralph run` | Generic Ralph loop — `--prompt`, `--max-iterations`, `--max-cost` |
 | `ralph audit-mcp` | MCP test-harness mode — `--mcp-cmd`, `--prompt`, `--branch` |
-| `ralph status <run-id>` | Show current state of a running or finished loop |
+| `ralph init` | Bootstrap a canonical PROMPT.md skeleton (`--out`, `--mission`) |
+| `ralph status <run-id>` | Rich table of iterations from a run transcript |
+| `ralph runs` | List past runs in `<repo>/.ralph-runs/` (`--clean-older-than N`) |
+| `ralph version` | Print ralph-claude-code version |
+
+### Companion scripts
+
+| Script | What it does |
+|---|---|
+| `scripts/file_issues.py` | Parses ISSUES.md and files each block as a real GitHub issue via `gh` |
+| `scripts/render_audit_report.py` | Collates run artifacts into one polished `RALPH_AUDIT_REPORT.md` |
+
+### CI integration
+
+Drop into your MCP repo's `.github/workflows/audit.yml`:
+
+```yaml
+on: { schedule: [{ cron: '0 4 * * 0' }], workflow_dispatch: }
+jobs:
+  audit:
+    uses: gacabartosz/ralph-claude-code/.github/workflows/audit-mcp-reusable.yml@main
+    with:
+      mcp-cmd: 'uv run your-mcp-server'
+      prompt-path: 'audit/PROMPT.md'
+    secrets:
+      anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+```
+
+See [`docs/github-actions.md`](docs/github-actions.md) and [`docs/mcp-audit-recipe.md`](docs/mcp-audit-recipe.md).
 
 ## Safety rails
 
