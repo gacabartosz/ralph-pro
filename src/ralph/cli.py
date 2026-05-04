@@ -186,6 +186,75 @@ def cmd_status(
     console.print(f"[bold]Iterations: {len(rows)}, total cost: ${total_cost:.4f}[/bold]")
 
 
+@app.command(name="runs")
+def cmd_runs(
+    repo: Path = typer.Option(Path.cwd(), "--repo", help="Repo holding .ralph-runs/"),
+    clean_older_than_days: int | None = typer.Option(
+        None,
+        "--clean-older-than",
+        help="If set, delete .ralph-runs/<id>/ entries older than N days",
+    ),
+):
+    """List past Ralph runs in <repo>/.ralph-runs/, optionally clean old ones."""
+    import time
+
+    runs_dir = repo / ".ralph-runs"
+    if not runs_dir.exists():
+        console.print(f"[yellow]No .ralph-runs/ directory at {runs_dir}[/yellow]")
+        raise typer.Exit(code=0)
+
+    entries = sorted(runs_dir.iterdir(), key=lambda p: p.stat().st_mtime, reverse=True)
+
+    if clean_older_than_days is not None:
+        cutoff = time.time() - clean_older_than_days * 86400
+        deleted = 0
+        for entry in entries:
+            if entry.stat().st_mtime < cutoff and entry.is_dir():
+                import shutil
+
+                shutil.rmtree(entry, ignore_errors=True)
+                console.print(f"[red]Deleted[/red] {entry.name}")
+                deleted += 1
+        console.print(f"[bold]Cleaned {deleted} run(s) older than {clean_older_than_days}d[/bold]")
+        return
+
+    table = Table(title=f"Ralph runs in {runs_dir}")
+    table.add_column("run id")
+    table.add_column("when")
+    table.add_column("iters", justify="right")
+    table.add_column("cost ($)", justify="right")
+    table.add_column("transcript")
+
+    for entry in entries:
+        if not entry.is_dir():
+            continue
+        transcript = entry / "transcript.jsonl"
+        iters = 0
+        cost = 0.0
+        if transcript.exists():
+            import json as _json
+
+            for line in transcript.read_text(encoding="utf-8").splitlines():
+                if not line.strip():
+                    continue
+                try:
+                    r = _json.loads(line)
+                except _json.JSONDecodeError:
+                    continue
+                iters += 1
+                cost += float(r.get("cost_usd", 0.0))
+        mtime = time.strftime("%Y-%m-%d %H:%M", time.localtime(entry.stat().st_mtime))
+        table.add_row(
+            entry.name,
+            mtime,
+            str(iters),
+            f"{cost:.4f}",
+            "yes" if transcript.exists() else "[dim]missing[/dim]",
+        )
+
+    console.print(table)
+
+
 async def _discover_tools(cmd: list[str]):
     client = McpStdioClient(cmd)
     await client.start()
