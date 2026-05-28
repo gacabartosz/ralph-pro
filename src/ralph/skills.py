@@ -197,6 +197,31 @@ def load_body(skill: Skill) -> str:
     return body.strip()
 
 
+# ─── System prompt injection ──────────────────────────────────────────
+
+
+SKILLS_SECTION_HEADER = "## Available skills"
+
+
+def system_prompt_section(skills: list[Skill]) -> str:
+    """Render the system-prompt snippet that lists discovered skills.
+
+    Cheap — only ``name + description`` (no body, no patterns). The LLM can
+    request the full body by emitting ``LOAD_SKILL: <name>`` which the loop
+    intercepts and resolves via ``load_body(skill)``.
+
+    Returns empty string when there are no skills (no header at all — keep
+    the prompt clean rather than printing an empty section).
+    """
+    if not skills:
+        return ""
+    lines = [SKILLS_SECTION_HEADER, ""]
+    lines.extend(s.system_prompt_line() for s in skills)
+    lines.append("")
+    lines.append('To use one, emit `LOAD_SKILL: <name>` and the loop will inject its body next iteration.')
+    return "\n".join(lines)
+
+
 # ─── Activation (Tier 1: substring match) ─────────────────────────────
 
 

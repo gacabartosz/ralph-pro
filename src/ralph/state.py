@@ -2,10 +2,13 @@
 from __future__ import annotations
 
 import json
+import os
 import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+
+from ralph import skills as skills_mod
 
 FIX_PLAN_DEFAULT = """# fix_plan.md
 
@@ -57,7 +60,12 @@ class State:
         return self.output_dir / "transcript.jsonl"
 
     def compose_prompt(self, iteration: int) -> str:
-        """Compose the prompt for iteration N: PROMPT.md + fix_plan.md snapshot."""
+        """Compose the prompt for iteration N: PROMPT.md + fix_plan.md + skills.
+
+        Skills are injected as a cheap descriptor list (name + description
+        only). Disable with ``RALPH_SKILLS_ENABLED=0`` if a project wants
+        a clean prompt without skill auto-discovery.
+        """
         prompt = (self.worktree_path / "PROMPT.md").read_text(encoding="utf-8")
         plan_path = self.worktree_path / "fix_plan.md"
         plan = plan_path.read_text(encoding="utf-8") if plan_path.exists() else FIX_PLAN_DEFAULT
@@ -66,7 +74,12 @@ class State:
             f"You are running inside an autonomous loop. Do ONE thing per iteration.\n"
             f"When the entire mission is done, output exactly: `{self.completion_signal}`.\n\n"
         )
-        return header + prompt + "\n\n## Current fix_plan.md\n\n" + plan
+        skills_section = ""
+        if os.environ.get("RALPH_SKILLS_ENABLED", "1") != "0":
+            skills_section = skills_mod.system_prompt_section(skills_mod.discover())
+            if skills_section:
+                skills_section = "\n\n" + skills_section
+        return header + prompt + "\n\n## Current fix_plan.md\n\n" + plan + skills_section
 
     def append_transcript(self, record: dict[str, Any]) -> None:
         record = {"ts": time.time(), **record}
